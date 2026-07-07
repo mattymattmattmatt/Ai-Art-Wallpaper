@@ -18,7 +18,7 @@ schedule:
   trigger_poll_seconds: 30 # how often loop mode checks the trigger flag
 
 audio:
-  device_name: ""          # substring of the input device name ("" = default mic).
+  device_name: "Jabra"          # substring of the input device name ("" = default mic).
                            # Run:  python -m artframe.audio_listener --list-devices
   sample_rate: 16000       # required by webrtcvad + ideal for whisper
   frame_ms: 30             # VAD frame size (10, 20 or 30)

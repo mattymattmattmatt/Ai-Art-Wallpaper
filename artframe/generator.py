@@ -34,16 +34,38 @@ def _load_workflow(cfg: Config, positive: str, negative: str) -> dict:
     wf = json.loads(wf_path.read_text(encoding="utf-8"))
 
     c = cfg["comfyui"]
+    seed = random.randint(0, 2**32 - 1)
+
     wf["4"]["inputs"]["ckpt_name"] = c["checkpoint"]
     wf["5"]["inputs"]["width"] = c["gen_width"]
     wf["5"]["inputs"]["height"] = c["gen_height"]
     wf["6"]["inputs"]["text"] = positive
     wf["7"]["inputs"]["text"] = negative
-    wf["3"]["inputs"]["seed"] = random.randint(0, 2**32 - 1)
+
+    # base sampling pass
+    wf["3"]["inputs"]["seed"] = seed
     wf["3"]["inputs"]["steps"] = c["steps"]
     wf["3"]["inputs"]["cfg"] = c["cfg"]
     wf["3"]["inputs"]["sampler_name"] = c["sampler"]
     wf["3"]["inputs"]["scheduler"] = c["scheduler"]
+
+    if c.get("hires_enable", False):
+        # hires-fix: latent-upscale, then a lower-denoise refinement pass
+        wf["11"]["inputs"]["width"] = c["hires_width"]
+        wf["11"]["inputs"]["height"] = c["hires_height"]
+        wf["12"]["inputs"]["seed"] = seed
+        wf["12"]["inputs"]["steps"] = c["hires_steps"]
+        wf["12"]["inputs"]["cfg"] = c["cfg"]
+        wf["12"]["inputs"]["sampler_name"] = c["sampler"]
+        wf["12"]["inputs"]["scheduler"] = c["scheduler"]
+        wf["12"]["inputs"]["denoise"] = c["hires_denoise"]
+    else:
+        # single-pass mode: decode straight from the base sampler and drop
+        # the hires nodes so ComfyUI never runs the second pass.
+        wf["8"]["inputs"]["samples"] = ["3", 0]
+        wf.pop("11", None)
+        wf.pop("12", None)
+
     wf["9"]["inputs"]["width"] = c["display_width"]
     wf["9"]["inputs"]["height"] = c["display_height"]
     return wf

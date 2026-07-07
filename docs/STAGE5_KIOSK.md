@@ -11,11 +11,20 @@ scripts\start_display.bat
 
 Open <http://localhost:8800>. You'll see the newest image from
 `data\images\` on pure black; when a new artwork lands, the page
-crossfades to it within `display.refresh_seconds` (20 s). Useful extras:
+crossfades to it within `display.refresh_seconds` (20 s).
 
-- `http://localhost:8800/api/status` — last prompt + gallery count
-  (also reachable from your phone on the LAN: `http://<mini-pc-ip>:8800`)
-- Tap the **bottom-right corner** of the page → requests a new painting.
+**The control panel.** Move the mouse into the **top-right corner** of the
+screen and a panel slides out showing:
+- the live pipeline stage (Idle / Listening back / Composing / Painting),
+  with elapsed time while an image is being painted;
+- the prompt for the current (or in-progress) artwork;
+- a **"Paint a new one now"** button — the manual override, same as
+  `trigger_now.bat` or `data\trigger.flag`.
+
+The cursor stays hidden until you move the mouse (media-player style), so
+the frame looks clean but the panel is always one flick away. The panel is
+also reachable from your phone on the LAN at `http://<mini-pc-ip>:8800`,
+and the raw data is at `http://localhost:8800/api/status`.
 
 `display.fit` in config: `contain` letterboxes the full painting;
 `cover` fills the whole 70" panel edge-to-edge (crops a little).
@@ -60,11 +69,44 @@ fullscreen black page → previous artwork appears → (a few minutes later)
 the orchestrator begins its first cycle. Check `data\logs\` if anything
 is missing, and `Get-ScheduledTask "ArtFrame*"` to see task states.
 
-## 5. Done when…
+## 5. Using the PC normally again (on/off switch)
+
+The frame takes over the machine at boot. When you want the PC back:
+
+```
+scripts\artframe_off.bat     :: click through the admin prompt
+```
+
+This disables the autostart tasks (so they won't return on the next
+reboot) **and** stops everything running right now — the kiosk browser,
+ComfyUI, and the listener/display/orchestrator — leaving you a normal
+desktop. Your regular Edge windows and other Python are left untouched;
+it only kills the frame's own processes (matched by command line).
+
+To turn it back into an art frame:
+
+```
+scripts\artframe_on.bat      :: re-enables autostart and starts it now
+```
+
+No reboot needed — the kiosk reappears within a few seconds. (Both
+scripts need admin, which the `.bat` files request for you via a UAC
+prompt.)
+
+## 6. Reboot test
+
+Reboot the mini PC and touch nothing. Within ~2 minutes you should get:
+fullscreen black page → previous artwork appears → (a few minutes later)
+the orchestrator begins its first cycle. Check `data\logs\` if anything
+is missing, and `Get-ScheduledTask "ArtFrame*"` to see task states.
+
+## 7. Done when…
 
 - [ ] TV shows art fullscreen with no visible UI
 - [ ] New images crossfade in automatically
+- [ ] The top-right panel shows live status and the override button works
 - [ ] A cold reboot restores everything unattended
+- [ ] `artframe_off` / `artframe_on` reclaim and restore the machine
 
 That's the complete system. See **TROUBLESHOOTING.md** for the fix-it
 list, and the README for day-2 maintenance.

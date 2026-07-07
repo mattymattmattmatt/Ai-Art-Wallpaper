@@ -55,10 +55,13 @@ scripts\start_orchestrator.bat :: the every-3-hours painting loop
 scripts\run_cycle_now.bat      :: run ONE full cycle in a console (testing)
 scripts\trigger_now.bat        :: ask the running loop to paint now
 scripts\register_tasks.ps1     :: autostart all of it at logon (run once, admin)
+scripts\artframe_off.bat       :: reclaim the PC (stop + disable autostart)
+scripts\artframe_on.bat        :: turn it back into an art frame
 ```
 
-Manual trigger, three ways: `trigger_now.bat`, tap the TV screen's
-bottom-right corner, or create the file `data\trigger.flag`.
+Manual trigger, three ways: the **"Paint a new one now"** button in the
+top-right control panel on the TV, `trigger_now.bat`, or creating the
+file `data\trigger.flag`.
 
 ## Layout
 
@@ -69,7 +72,8 @@ artframe/            the Python package
   prompt_builder.py    Ollama + meaningfulness check + fallback logic
   generator.py         ComfyUI HTTP API client
   orchestrator.py      the cycle + schedule loop + lock
-  display_server.py    fullscreen kiosk page + /api/trigger + /api/status
+  status.py            live pipeline stage shared with the display panel
+  display_server.py    fullscreen kiosk page + control panel + APIs
 config.yaml          every tunable, commented
 workflows/           ComfyUI API-format workflow (SD 1.5 painterly)
 prompts/             LLM system prompt + curated fallback elements

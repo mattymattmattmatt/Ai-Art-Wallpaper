@@ -69,11 +69,20 @@ You can also test through this repo's API client once Python is set up
   throttled N150 can double generation time.
 - **Steps are your lever**: 20 → 14 steps cuts ~30% of the time with a
   modest quality cost. Adjust `comfyui.steps` in `config.yaml`.
-- **Resolution is quadratic**: 896×504 is the sweet spot for *generation*.
-  Don't generate at 1080p/4K directly — SD 1.5 degrades above ~768px
-  anyway; we lanczos-upscale to `comfyui.display_width/height` in the
-  workflow instead, which is near-free on CPU regardless of target size
-  (1080p or native 4K both work — set it to match your TV).
+- **Resolution is quadratic**: 896×504 is the sweet spot for the *base*
+  pass. Don't generate at 1080p/4K directly — SD 1.5 degrades above
+  ~768px anyway; we lanczos-upscale to `comfyui.display_width/height` in
+  the workflow instead, which is near-free on CPU regardless of target
+  size (1080p or native 4K both work — set it to match your TV).
+- **Detail vs. time — the hires-fix pass**: `comfyui.hires_enable: true`
+  (the default) adds a second sampling pass at `hires_width/height`
+  (default 1280×720) that puts *real* detail into the image before the
+  final upscale, so it doesn't look soft on a big 4K panel. It roughly
+  doubles generation time (two passes) — expect ~25–35 min total on the
+  N150. Push `hires_width/height` to 1536×864 for even more detail, or
+  set `hires_enable: false` to go back to fast single-pass mode. The
+  base `steps` drive the first pass; `hires_steps` (default 14) the
+  second.
 - **RAM**: ComfyUI CPU mode + SD 1.5 uses ~6 GB. With 16 GB you're fine
   as long as Ollama unloads between calls (already configured:
   `llm.keep_alive: 0`).

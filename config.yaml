@@ -11,6 +11,7 @@ paths:
   history_file: data/prompt_history.json
   trigger_flag: data/trigger.flag        # touch this file to force a cycle now
   last_transcript: data/last_transcript.txt
+  status_file: data/status.json          # live pipeline stage, read by the display panel
 
 schedule:
   interval_hours: 3        # generate a new image every N hours
@@ -68,16 +69,29 @@ comfyui:
   base_url: http://127.0.0.1:8188
   workflow: workflows/painterly_sd15.json
   checkpoint: dreamshaper_8.safetensors   # must match the filename in ComfyUI/models/checkpoints
-  # SD 1.5 sweet spot; the workflow lanczos-upscales to display resolution.
+  # Base pass — keep near the SD 1.5 sweet spot (~512-768px short side) to
+  # avoid the duplicated-subject artifacts SD 1.5 gets at high resolution.
   gen_width: 896
   gen_height: 504
-  display_width: 3840   # native 4K — matches a 4K TV so it isn't upscaled twice
-  display_height: 2160
   steps: 20
   cfg: 6.5
   sampler: dpmpp_2m
   scheduler: karras
-  timeout_minutes: 60      # give up on a generation after this long
+
+  # Hires-fix second pass: latent-upscale the base image, then refine it
+  # so the artwork has REAL detail on a big 4K panel instead of a soft
+  # upscale. This roughly doubles generation time (two sampling passes) —
+  # set hires_enable: false to go back to fast single-pass mode.
+  hires_enable: true
+  hires_width: 1280        # push to 1536 x 864 for even more detail / more time
+  hires_height: 720
+  hires_steps: 14          # second pass needs fewer steps than the base
+  hires_denoise: 0.45      # 0.35 = closer to base, 0.55 = more re-detailing
+
+  # Final cheap lanczos upscale to the TV's native resolution.
+  display_width: 3840   # native 4K — matches a 4K TV so it isn't upscaled twice
+  display_height: 2160
+  timeout_minutes: 75      # give up on a generation after this long (covers 2 passes)
 
 display:
   host: 0.0.0.0

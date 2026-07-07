@@ -25,6 +25,7 @@ from artframe.config import Config, load_config
 from artframe.generator import GenerationError, check_server, generate
 from artframe.log_setup import get_logger
 from artframe.prompt_builder import append_history, build_prompt
+from artframe.status import set_status
 from artframe.transcriber import transcribe_window
 
 LOCK_NAME = "cycle.lock"
@@ -72,18 +73,26 @@ def run_cycle(cfg: Config, force_fallback: bool = False) -> bool:
         if not check_server(cfg):
             log.error("ComfyUI is not reachable at %s — is it running?",
                       cfg["comfyui"]["base_url"])
+            set_status(cfg, "error", "ComfyUI is not running")
             return False
 
+        set_status(cfg, "transcribing", "Listening back over the last few hours...")
         transcript = "" if force_fallback else transcribe_window(cfg)
+
+        set_status(cfg, "prompting", "Dreaming up a new scene...")
         positive, source = build_prompt(cfg, transcript)
         negative = cfg["prompting"]["negative_prompt"]
 
         out = cfg.path("paths", "images_dir") / time.strftime(
             "art_%Y%m%d_%H%M%S.png")
+        set_status(cfg, "generating", "Painting the new artwork...",
+                   prompt=positive, source=source)
         try:
             generate(cfg, positive, negative, out)
         except GenerationError as exc:
             log.error("generation failed: %s", exc)
+            set_status(cfg, "error", f"Generation failed: {exc}",
+                       prompt=positive, source=source)
             return False
 
         # Only successful generations enter history — that keeps the
@@ -91,9 +100,12 @@ def run_cycle(cfg: Config, force_fallback: bool = False) -> bool:
         append_history(cfg, positive, source)
         prune_gallery(cfg, log)
         log.info("=== cycle complete: %s (source=%s) ===", out.name, source)
+        set_status(cfg, "idle", "Waiting for the next painting",
+                   prompt=positive, source=source)
         return True
     except Exception as exc:  # noqa: BLE001
         log.exception("cycle crashed: %r", exc)
+        set_status(cfg, "error", f"Cycle crashed: {exc!r}")
         return False
     finally:
         lock.release()
@@ -108,6 +120,7 @@ def run_loop(cfg: Config) -> None:
 
     log.info("loop mode: every %sh, trigger flag %s",
              cfg["schedule"]["interval_hours"], flag)
+    set_status(cfg, "idle", "Warming up — first painting shortly")
     next_run = time.time() + 120  # first artwork ~2 min after boot
     while True:
         triggered = flag.exists()

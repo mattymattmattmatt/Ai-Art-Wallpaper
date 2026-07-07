@@ -25,6 +25,7 @@ import webrtcvad  # provided by the `webrtcvad-wheels` package
 
 from artframe.config import load_config
 from artframe.log_setup import get_logger
+from artframe.status import beat
 
 
 def list_devices() -> None:
@@ -118,6 +119,8 @@ def run_listener() -> None:
     ring: collections.deque[tuple[bytes, bool]] = collections.deque(maxlen=padding_frames)
     triggered = False
     last_prune = time.monotonic()
+    last_beat = 0.0
+    beat(cfg, "listener")
 
     log.info("listening: device=%s rate=%d vad=%d",
              a["device_name"] or "default", sample_rate, a["vad_aggressiveness"])
@@ -152,6 +155,10 @@ def run_listener() -> None:
                     triggered = False
                     writer.flush()
                     ring.clear()
+
+            if time.monotonic() - last_beat > 30:  # liveness for the health row
+                beat(cfg, "listener")
+                last_beat = time.monotonic()
 
             if time.monotonic() - last_prune > 300:  # every 5 min
                 prune_buffer(audio_dir, a["max_buffer_mb"], log)

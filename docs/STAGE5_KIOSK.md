@@ -17,9 +17,23 @@ crossfades to it within `display.refresh_seconds` (20 s).
 screen and a panel slides out showing:
 - the live pipeline stage (Idle / Listening back / Composing / Painting),
   with elapsed time while an image is being painted;
-- the prompt for the current (or in-progress) artwork;
+- the prompt for whatever is on screen (or being painted right now), with
+  a **star** to pin it as a favorite — favorites are never pruned and get
+  extra turns in the slideshow;
+- a **System** health row — Mic (listener), Cycles (orchestrator),
+  Painter (ComfyUI), Prompter (Ollama) — green means alive, red means
+  that component is down or stale (see TROUBLESHOOTING);
+- a **Gallery** strip of recent artworks — click one to view it (the
+  frame returns to live art after 10 minutes, or tap the "back to live"
+  pill bottom-left);
 - a **"Paint a new one now"** button — the manual override, same as
   `trigger_now.bat` or `data\trigger.flag`.
+
+**Slideshow.** With `display.slideshow_enable: true` (default) the frame
+rotates through the gallery every `slideshow_minutes` (12) instead of
+holding one painting for 3 hours. A freshly painted artwork always
+interrupts the rotation and takes the screen. Favorites appear
+`slideshow_favorites_boost` (2) times per shuffle.
 
 When the mouse is idle the screen is **pure artwork** — no cursor, no
 buttons. The moment you move the mouse, the cursor and a small round

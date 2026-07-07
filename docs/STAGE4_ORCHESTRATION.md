@@ -91,8 +91,15 @@ you wonder "why did it paint *that*?"
 | `schedule.interval_hours` | how often a new painting appears |
 | `prompting.min_words` / `min_content_words` | how chatty the room must be to drive the art |
 | `prompting.remix_probability` | fallback flavor: history remix vs fresh random |
+| `prompting.similarity_threshold` | repeat guard: re-roll scenes whose content-word overlap with the last `similarity_window` prompts exceeds this (1 = off) |
 | `comfyui.steps` | biggest speed lever (14–25 sensible) |
 | `prompting.style_suffix` | the enforced painting style — edit to taste |
+
+**The repeat guard** keeps the frame from painting "yet another lighthouse
+at sunset": every candidate scene is compared to recent history, and if
+it overlaps too heavily it re-rolls (up to 3 attempts, keeping the least
+repetitive candidate). Watch `prompts.log` for `repeat guard:` lines to
+see it working.
 
 ## 5. Done when…
 

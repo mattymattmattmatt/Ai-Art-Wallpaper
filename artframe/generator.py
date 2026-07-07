@@ -20,6 +20,7 @@ import requests
 
 from artframe.config import PROJECT_ROOT, Config, load_config
 from artframe.log_setup import get_logger
+from artframe.status import beat
 
 
 class GenerationError(RuntimeError):
@@ -92,6 +93,9 @@ def generate(cfg: Config, positive: str, negative: str, out_path: Path) -> Path:
     started = time.monotonic()
     while time.monotonic() < deadline:
         time.sleep(5)
+        # generation is the longest stage — keep the cycle engine's
+        # liveness fresh so the health row doesn't false-alarm
+        beat(cfg, "orchestrator")
         hist = requests.get(f"{base}/history/{prompt_id}", timeout=30).json()
         if prompt_id not in hist:
             continue  # still queued / running

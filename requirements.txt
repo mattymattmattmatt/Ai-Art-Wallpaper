@@ -1,0 +1,19 @@
+# AI Ambient Art Frame — Python dependencies
+# Install into the project venv:  pip install -r requirements.txt
+
+# Audio capture + VAD
+sounddevice>=0.4.6
+webrtcvad-wheels>=2.0.14   # prebuilt Windows wheels; imports as `webrtcvad`
+
+# Local speech-to-text
+faster-whisper>=1.0.0
+
+# HTTP client for Ollama + ComfyUI APIs
+requests>=2.31.0
+
+# Display server
+flask>=3.0.0
+waitress>=3.0.0
+
+# Config
+pyyaml>=6.0

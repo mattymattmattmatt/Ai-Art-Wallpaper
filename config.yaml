@@ -1,0 +1,91 @@
+# ============================================================
+# AI Ambient Art Frame — central configuration
+# All paths are relative to the project root unless absolute.
+# ============================================================
+
+paths:
+  data_dir: data                 # runtime data root (auto-created)
+  audio_dir: data/audio_buffer   # rolling buffer of VAD speech clips
+  images_dir: data/images        # generated images (latest.jpg + gallery)
+  logs_dir: data/logs
+  history_file: data/prompt_history.json
+  trigger_flag: data/trigger.flag        # touch this file to force a cycle now
+  last_transcript: data/last_transcript.txt
+
+schedule:
+  interval_hours: 3        # generate a new image every N hours
+  window_hours: 3          # transcribe audio from the last N hours
+  trigger_poll_seconds: 30 # how often loop mode checks the trigger flag
+
+audio:
+  device_name: ""          # substring of the input device name ("" = default mic).
+                           # Run:  python -m artframe.audio_listener --list-devices
+  sample_rate: 16000       # required by webrtcvad + ideal for whisper
+  frame_ms: 30             # VAD frame size (10, 20 or 30)
+  vad_aggressiveness: 2    # 0 (permissive) .. 3 (strict). 2 is a good room default.
+  padding_ms: 300          # silence padding that opens/closes a speech clip
+  min_clip_seconds: 2.0    # discard clips shorter than this (coughs, bumps)
+  max_clip_seconds: 60     # split long conversations into clips of this length
+  max_buffer_mb: 500       # hard cap on the audio buffer folder; oldest deleted first
+
+transcription:
+  model: base.en           # tiny.en = fastest, base.en = good balance for N150
+  compute_type: int8       # int8 quantization — big speedup on CPU
+  cpu_threads: 4           # N150 has 4 cores
+  language: en
+
+llm:
+  base_url: http://127.0.0.1:11434
+  model: qwen2.5:7b-instruct    # or llama3.1:8b — see docs/STAGE2_OLLAMA.md
+  temperature: 0.9
+  max_tokens: 220
+  timeout_seconds: 300
+  keep_alive: 0            # unload the model after each call to free RAM for ComfyUI
+
+prompting:
+  # Transcript must clear BOTH bars to be considered "meaningful",
+  # otherwise the smart fallback kicks in.
+  min_words: 25
+  min_content_words: 8     # words that are not filler/stopwords
+  # Chance the fallback REMIXES prompt history vs composing a fresh random one.
+  remix_probability: 0.6
+  history_max_entries: 200
+  # Style enforcement — appended to EVERY positive prompt.
+  style_suffix: >-
+    traditional oil painting on canvas, impasto, thick textured brushstrokes,
+    visible canvas weave, layered paint, rich harmonious pigments, dramatic
+    natural lighting, chiaroscuro, fine art, masterpiece, best quality,
+    highly detailed, museum quality
+  negative_prompt: >-
+    photograph, photo, photorealistic, hyperrealistic, 3d render, cgi,
+    digital art, digital painting, airbrush, smooth, anime, cartoon, manga,
+    illustration, vector, watermark, signature, text, letters, frame, border,
+    lowres, blurry, out of focus, jpeg artifacts, worst quality, low quality,
+    normal quality, deformed, disfigured, mutated, extra limbs, bad anatomy,
+    bad hands, bad proportions
+
+comfyui:
+  base_url: http://127.0.0.1:8188
+  workflow: workflows/painterly_sd15.json
+  checkpoint: dreamshaper_8.safetensors   # must match the filename in ComfyUI/models/checkpoints
+  # SD 1.5 sweet spot; the workflow lanczos-upscales to display resolution.
+  gen_width: 896
+  gen_height: 504
+  display_width: 1920
+  display_height: 1080
+  steps: 20
+  cfg: 6.5
+  sampler: dpmpp_2m
+  scheduler: karras
+  timeout_minutes: 60      # give up on a generation after this long
+
+display:
+  host: 0.0.0.0
+  port: 8800
+  refresh_seconds: 20      # how often the kiosk page checks for a new image
+  fit: contain             # contain = letterbox, cover = fill/crop
+  gallery_keep: 60         # keep this many past images on disk
+
+privacy:
+  delete_audio_after_transcription: true
+  keep_last_transcript: true    # keep ONLY the most recent transcript for debugging

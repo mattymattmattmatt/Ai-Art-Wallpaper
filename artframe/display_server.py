@@ -46,13 +46,16 @@ PAGE = """<!doctype html>
   /* invisible hover target in the top-right corner */
   #hot { position:fixed; top:0; right:0; width:200px; height:200px; z-index:5; }
 
-  /* small hint tab, only visible while the cursor is showing */
-  #hint { position:fixed; top:16px; right:16px; z-index:6;
-          color:#bbb; font:14px Georgia, serif; letter-spacing:.04em;
-          background:rgba(20,20,24,.72); padding:7px 14px; border-radius:20px;
-          opacity:0; transition:opacity .4s; pointer-events:none; }
-  body.show-cursor #hint { opacity:.85; }
-  body.panel-open #hint { opacity:0; }
+  /* the ONLY visible affordance: a subtle round opener, hidden by
+     default (pure art) and faded in only while the mouse is moving */
+  #opener { position:fixed; top:18px; right:18px; z-index:6;
+            width:44px; height:44px; border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            background:rgba(20,20,24,.55); color:#d0d0d0; font:20px Georgia, serif;
+            border:1px solid rgba(255,255,255,.12); cursor:pointer;
+            opacity:0; transition:opacity .4s; pointer-events:none; }
+  body.show-cursor #opener { opacity:.7; pointer-events:auto; }
+  body.panel-open  #opener { opacity:0; pointer-events:none; }
 
   #panel { position:fixed; top:16px; right:16px; z-index:7; width:390px;
            max-width:calc(100vw - 32px);
@@ -85,7 +88,7 @@ PAGE = """<!doctype html>
   <img id="b" class="art" alt="">
 
   <div id="hot"></div>
-  <div id="hint">&#9432; details</div>
+  <div id="opener" title="Show details">&#9432;</div>
   <div id="panel">
     <div id="p-state"><span id="p-dot"></span><span id="p-stage">Loading...</span></div>
     <div id="p-elapsed"></div>
@@ -155,11 +158,14 @@ PAGE = """<!doctype html>
     panelOpen = false;
     document.body.classList.remove('panel-open');
     clearInterval(statusTimer);
+    showCursor();  // restart the hide timer so the opener + cursor fade out
   }
   const hot = document.getElementById('hot');
   const panel = document.getElementById('panel');
+  const opener = document.getElementById('opener');
   hot.addEventListener('mouseenter', openPanel);
-  hot.addEventListener('click', openPanel);   // touch friendly
+  opener.addEventListener('click', openPanel);  // click/tap the button
+  hot.addEventListener('click', openPanel);      // touch friendly
   panel.addEventListener('mouseenter', () => clearTimeout(closeTimer));
   function scheduleClose() { closeTimer = setTimeout(closePanel, 700); }
   panel.addEventListener('mouseleave', scheduleClose);

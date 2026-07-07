@@ -101,24 +101,74 @@ def load_history(cfg: Config) -> list[dict]:
     return []
 
 
-def append_history(cfg: Config, prompt: str, source: str) -> None:
+def append_history(cfg: Config, prompt: str, source: str,
+                   scene: str | None = None, image: str | None = None) -> None:
+    """Record a successful prompt. `scene` is the prompt without the style
+    suffix (used by the repeat guard); `image` links it to the artwork file
+    (used by the gallery)."""
     history = load_history(cfg)
-    history.append({"ts": time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "source": source, "prompt": prompt})
+    entry = {"ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+             "source": source, "prompt": prompt}
+    if scene:
+        entry["scene"] = scene
+    if image:
+        entry["image"] = image
+    history.append(entry)
     history = history[-cfg["prompting"]["history_max_entries"]:]
     cfg.path("paths", "history_file").write_text(
         json.dumps(history, indent=2), encoding="utf-8")
 
 
+def _entry_scene(cfg: Config, entry: dict) -> str:
+    """The scene text of a history entry, stripping the style suffix from
+    older entries that only stored the full prompt."""
+    if entry.get("scene"):
+        return entry["scene"]
+    prompt = entry.get("prompt", "")
+    suffix = " ".join(str(cfg["prompting"]["style_suffix"]).split())
+    return prompt.replace(suffix, "").rstrip(", ")
+
+
+# ------------------------------------------------------------- repeat guard
+
+def _content_words(text: str) -> set[str]:
+    words = re.findall(r"[a-zA-Z']+", text.lower())
+    return {w for w in words if w not in _STOPWORDS and len(w) > 2}
+
+
+def similarity(a: str, b: str) -> float:
+    """Jaccard overlap of content words — cheap but effective for spotting
+    'yet another lighthouse at sunset'."""
+    wa, wb = _content_words(a), _content_words(b)
+    if not wa or not wb:
+        return 0.0
+    return len(wa & wb) / len(wa | wb)
+
+
+def max_recent_similarity(cfg: Config, scene: str) -> float:
+    window = cfg["prompting"]["similarity_window"]
+    recent = load_history(cfg)[-window:] if window else []
+    if not recent:
+        return 0.0
+    return max(similarity(scene, _entry_scene(cfg, e)) for e in recent)
+
+
 # ------------------------------------------------------------ prompt makers
 
-def craft_from_transcript(cfg: Config, transcript: str) -> str:
+def craft_from_transcript(cfg: Config, transcript: str,
+                          avoid: str | None = None) -> str:
     system = SYSTEM_PROMPT_FILE.read_text(encoding="utf-8")
     user = (
         "Here is a transcript of ambient conversation from the room over the "
         "last few hours. Create the image prompt now.\n\nTRANSCRIPT:\n"
         + transcript[:6000]
     )
+    if avoid:
+        user += (
+            "\n\nIMPORTANT: a very similar scene was painted recently. Take a "
+            "completely different angle — different subject, setting and mood "
+            f"than this: {avoid}"
+        )
     return _ollama(cfg, system, user)
 
 
@@ -158,31 +208,49 @@ def remix_history(cfg: Config, history: list[dict]) -> str:
         return ", ".join(dict.fromkeys(fragments)) or compose_random(cfg)
 
 
-def build_prompt(cfg: Config, transcript: str) -> tuple[str, str]:
-    """Return (final_positive_prompt, source_tag)."""
-    log = get_logger("prompts", cfg)
-    p = cfg["prompting"]
-
-    scene, source = None, None
+def _make_scene(cfg: Config, transcript: str, log,
+                avoid: str | None = None) -> tuple[str, str]:
+    """One attempt at producing (scene, source)."""
     if transcript and is_meaningful(transcript, cfg):
         try:
-            scene = craft_from_transcript(cfg, transcript)
-            source = "transcript"
+            return craft_from_transcript(cfg, transcript, avoid=avoid), "transcript"
         except Exception as exc:  # noqa: BLE001
             log.warning("LLM crafting failed (%r) — using fallback", exc)
 
-    if scene is None:
-        history = load_history(cfg)
-        if history and random.random() < p["remix_probability"]:
-            scene = remix_history(cfg, history)
-            source = "remix"
-        else:
-            scene = compose_random(cfg)
-            source = "random"
+    history = load_history(cfg)
+    if history and random.random() < cfg["prompting"]["remix_probability"]:
+        return remix_history(cfg, history), "remix"
+    return compose_random(cfg), "random"
 
+
+def build_prompt(cfg: Config, transcript: str) -> tuple[str, str, str]:
+    """Return (final_positive_prompt, source_tag, scene).
+
+    Applies the repeat guard: if a candidate scene overlaps too heavily
+    with a recent prompt, re-roll (up to 3 attempts) and keep the least
+    repetitive candidate.
+    """
+    log = get_logger("prompts", cfg)
+    p = cfg["prompting"]
+    threshold = p["similarity_threshold"]
+
+    best_scene, best_source, best_sim = None, None, 2.0
+    avoid = None
+    for attempt in range(3):
+        scene, source = _make_scene(cfg, transcript, log, avoid=avoid)
+        sim = max_recent_similarity(cfg, scene)
+        if sim < best_sim:
+            best_scene, best_source, best_sim = scene, source, sim
+        if sim < threshold:
+            break
+        log.info("repeat guard: attempt %d too similar (%.2f >= %.2f) — re-rolling",
+                 attempt + 1, sim, threshold)
+        avoid = scene
+
+    scene, source = best_scene, best_source
     final = f"{scene}, {p['style_suffix']}"
-    log.info("prompt source=%s: %s", source, final)
-    return final, source
+    log.info("prompt source=%s (similarity %.2f): %s", source, best_sim, final)
+    return final, source, scene
 
 
 if __name__ == "__main__":
@@ -194,5 +262,5 @@ if __name__ == "__main__":
                         help="force the fallback path")
     args = parser.parse_args()
     config = load_config()
-    prompt, src = build_prompt(config, "" if args.fallback else args.text)
+    prompt, src, _scene = build_prompt(config, "" if args.fallback else args.text)
     print(f"[{src}] {prompt}")

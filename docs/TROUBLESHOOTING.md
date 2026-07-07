@@ -106,6 +106,22 @@ timestamps, and the orchestrator logs which stage failed.
 - A crashed cycle can leave `data\cycle.lock`; it auto-expires after the
   generation timeout + 30 min, or just delete the file.
 
+**A dot in the System health row is red**
+- **Mic** — the listener stopped beating (>2 min). Check `listener.log`;
+  usually the USB headset was unplugged. The listener auto-restarts, so
+  a brief red after replugging is normal.
+- **Cycles** — the orchestrator loop hasn't beaten in >6 min. Check
+  `orchestrator.log`; restart the "ArtFrame Orchestrator" task.
+- **Painter** — ComfyUI isn't answering on port 8188. Is its console
+  window still open?
+- **Ollama** — the Ollama service isn't answering. `ollama list` in a
+  terminal; note the frame still works without it (fallback prompts).
+
+**Gallery thumbnails don't load**
+- Pillow may be missing (added later in the project):
+  `.venv\Scripts\pip install -r requirements.txt`, then restart the
+  "ArtFrame Display" task.
+
 ## Nuclear option
 
 Everything in `data\` is disposable state. Stop the tasks, delete the

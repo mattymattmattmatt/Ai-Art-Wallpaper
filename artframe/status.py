@@ -52,3 +52,28 @@ def read_status(cfg: Config) -> dict:
         except (json.JSONDecodeError, OSError):
             return {}
     return {}
+
+
+# ------------------------------------------------------------- heartbeats
+# Long-running components call beat() periodically; the display server
+# reads the ages to render the health row. A missing/old beat = trouble.
+
+def beat(cfg: Config, component: str) -> None:
+    path = cfg.path("paths", "heartbeats_dir") / component
+    try:
+        path.write_text(str(time.time()), encoding="utf-8")
+    except OSError:
+        pass  # a failed heartbeat must never crash the component
+
+
+def beat_ages(cfg: Config) -> dict[str, float]:
+    """Seconds since each component last beat (component -> age)."""
+    ages: dict[str, float] = {}
+    hb_dir = cfg.path("paths", "heartbeats_dir")
+    now = time.time()
+    for f in hb_dir.iterdir():
+        try:
+            ages[f.name] = max(0.0, now - float(f.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            continue
+    return ages

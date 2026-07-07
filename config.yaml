@@ -12,6 +12,9 @@ paths:
   trigger_flag: data/trigger.flag        # touch this file to force a cycle now
   last_transcript: data/last_transcript.txt
   status_file: data/status.json          # live pipeline stage, read by the display panel
+  favorites_file: data/favorites.json    # pinned artworks (never pruned)
+  thumbs_dir: data/thumbs                # cached gallery thumbnails
+  heartbeats_dir: data/heartbeats        # component liveness for the health row
 
 schedule:
   interval_hours: 3        # generate a new image every N hours
@@ -51,6 +54,10 @@ prompting:
   # Chance the fallback REMIXES prompt history vs composing a fresh random one.
   remix_probability: 0.6
   history_max_entries: 200
+  # Repeat guard: re-roll a new scene if it's too similar to a recent one
+  # (content-word overlap vs the last `similarity_window` prompts).
+  similarity_window: 8
+  similarity_threshold: 0.55   # 0..1; lower = stricter variety, 1 = disabled
   # Style enforcement — appended to EVERY positive prompt.
   style_suffix: >-
     traditional oil painting on canvas, impasto, thick textured brushstrokes,
@@ -98,7 +105,13 @@ display:
   port: 8800
   refresh_seconds: 20      # how often the kiosk page checks for a new image
   fit: contain             # contain = letterbox, cover = fill/crop
-  gallery_keep: 60         # keep this many past images on disk
+  gallery_keep: 60         # keep this many past images on disk (favorites never count)
+  # Slideshow: rotate through past artworks between generations instead of
+  # holding the newest for 3 hours. A brand-new painting always interrupts
+  # the rotation and shows immediately.
+  slideshow_enable: true
+  slideshow_minutes: 12    # how long each artwork stays up
+  slideshow_favorites_boost: 2   # favorites appear this many times per shuffle
 
 privacy:
   delete_audio_after_transcription: true

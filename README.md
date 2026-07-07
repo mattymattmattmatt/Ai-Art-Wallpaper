@@ -72,8 +72,9 @@ artframe/            the Python package
   prompt_builder.py    Ollama + meaningfulness check + fallback logic
   generator.py         ComfyUI HTTP API client
   orchestrator.py      the cycle + schedule loop + lock
-  status.py            live pipeline stage shared with the display panel
-  display_server.py    fullscreen kiosk page + control panel + APIs
+  status.py            live pipeline stage + component heartbeats
+  gallery.py           favorites, image<->prompt join, thumbnails
+  display_server.py    kiosk page: slideshow, gallery, health, control panel
 config.yaml          every tunable, commented
 workflows/           ComfyUI API-format workflow (SD 1.5 painterly)
 prompts/             LLM system prompt + curated fallback elements

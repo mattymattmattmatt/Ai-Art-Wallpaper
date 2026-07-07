@@ -17,7 +17,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_FILE = PROJECT_ROOT / "config.yaml"
 
 # Keys under `paths:` that are directories (created on demand).
-_DIR_KEYS = {"data_dir", "audio_dir", "images_dir", "logs_dir"}
+_DIR_KEYS = {"data_dir", "audio_dir", "images_dir", "logs_dir",
+             "thumbs_dir", "heartbeats_dir"}
 
 
 class Config(dict):

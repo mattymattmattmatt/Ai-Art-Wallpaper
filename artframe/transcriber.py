@@ -16,6 +16,7 @@ from pathlib import Path
 
 from artframe.config import Config, load_config
 from artframe.log_setup import get_logger
+from artframe.status import beat
 
 
 def clips_in_window(audio_dir: Path, window_hours: float) -> list[Path]:
@@ -47,6 +48,7 @@ def transcribe_window(cfg: Config, delete_audio: bool | None = None) -> str:
 
     pieces: list[str] = []
     for clip in clips:
+        beat(cfg, "orchestrator")  # transcription can take minutes on many clips
         try:
             segments, _info = model.transcribe(
                 str(clip),

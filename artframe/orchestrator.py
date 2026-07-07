@@ -22,10 +22,11 @@ import sys
 import time
 
 from artframe.config import Config, load_config
+from artframe.gallery import load_favorites, prune_thumbs
 from artframe.generator import GenerationError, check_server, generate
 from artframe.log_setup import get_logger
 from artframe.prompt_builder import append_history, build_prompt
-from artframe.status import set_status
+from artframe.status import beat, set_status
 from artframe.transcriber import transcribe_window
 
 LOCK_NAME = "cycle.lock"
@@ -54,10 +55,15 @@ class CycleLock:
 def prune_gallery(cfg: Config, log) -> None:
     images_dir = cfg.path("paths", "images_dir")
     keep = cfg["display"]["gallery_keep"]
-    files = sorted(images_dir.glob("art_*.png"), key=lambda p: p.stat().st_mtime)
+    favorites = load_favorites(cfg)
+    # favorites are exempt AND don't use up the keep budget
+    files = sorted((p for p in images_dir.glob("art_*.png")
+                    if p.name not in favorites),
+                   key=lambda p: p.stat().st_mtime)
     for old in files[:-keep] if keep else []:
         old.unlink(missing_ok=True)
         log.info("pruned old artwork %s", old.name)
+    prune_thumbs(cfg)
 
 
 def run_cycle(cfg: Config, force_fallback: bool = False) -> bool:
@@ -80,7 +86,7 @@ def run_cycle(cfg: Config, force_fallback: bool = False) -> bool:
         transcript = "" if force_fallback else transcribe_window(cfg)
 
         set_status(cfg, "prompting", "Dreaming up a new scene...")
-        positive, source = build_prompt(cfg, transcript)
+        positive, source, scene = build_prompt(cfg, transcript)
         negative = cfg["prompting"]["negative_prompt"]
 
         out = cfg.path("paths", "images_dir") / time.strftime(
@@ -96,8 +102,8 @@ def run_cycle(cfg: Config, force_fallback: bool = False) -> bool:
             return False
 
         # Only successful generations enter history — that keeps the
-        # remix fallback pool high quality.
-        append_history(cfg, positive, source)
+        # remix fallback pool high quality. The image link feeds the gallery.
+        append_history(cfg, positive, source, scene=scene, image=out.name)
         prune_gallery(cfg, log)
         log.info("=== cycle complete: %s (source=%s) ===", out.name, source)
         set_status(cfg, "idle", "Waiting for the next painting",
@@ -123,6 +129,7 @@ def run_loop(cfg: Config) -> None:
     set_status(cfg, "idle", "Warming up — first painting shortly")
     next_run = time.time() + 120  # first artwork ~2 min after boot
     while True:
+        beat(cfg, "orchestrator")
         triggered = flag.exists()
         if triggered or time.time() >= next_run:
             if triggered:

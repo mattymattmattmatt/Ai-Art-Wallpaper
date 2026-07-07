@@ -5,7 +5,18 @@
 # Remove everything later with:
 #   Get-ScheduledTask "ArtFrame*" | Unregister-ScheduledTask -Confirm:$false
 
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+if (-not $PSScriptRoot) {
+    Write-Error "This script must be run as a FILE, not pasted into the console (`$PSScriptRoot is empty when pasted). Run it like this instead:`n`n    powershell -ExecutionPolicy Bypass -File scripts\register_tasks.ps1`n"
+    exit 1
+}
 $root = Split-Path -Parent $PSScriptRoot
+if (-not (Test-Path "$root\scripts\start_comfyui.bat")) {
+    Write-Error "Could not find scripts\start_comfyui.bat under '$root'. Run this from the project root, e.g.:`n`n    cd path\to\Ai-Art-Wallpaper`n    powershell -ExecutionPolicy Bypass -File scripts\register_tasks.ps1`n"
+    exit 1
+}
 
 function Register-ArtFrameTask {
     param([string]$Name, [string]$Script, [int]$DelaySeconds)

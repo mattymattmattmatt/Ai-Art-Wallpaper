@@ -21,10 +21,13 @@ screen and a panel slides out showing:
 - a **"Paint a new one now"** button — the manual override, same as
   `trigger_now.bat` or `data\trigger.flag`.
 
-The cursor stays hidden until you move the mouse (media-player style), so
-the frame looks clean but the panel is always one flick away. The panel is
-also reachable from your phone on the LAN at `http://<mini-pc-ip>:8800`,
-and the raw data is at `http://localhost:8800/api/status`.
+When the mouse is idle the screen is **pure artwork** — no cursor, no
+buttons. The moment you move the mouse, the cursor and a small round
+opener (top-right) fade in; move into the corner or click the opener to
+slide the panel out, and everything fades back to bare art a few seconds
+after you stop. The panel is also reachable from your phone on the LAN at
+`http://<mini-pc-ip>:8800`, and the raw data is at
+`http://localhost:8800/api/status`.
 
 `display.fit` in config: `contain` letterboxes the full painting;
 `cover` fills the whole 70" panel edge-to-edge (crops a little).

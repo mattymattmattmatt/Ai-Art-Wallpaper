@@ -3,6 +3,28 @@
 First stop, always: `data\logs\*.log`. Every component logs there with
 timestamps, and the orchestrator logs which stage failed.
 
+## Setup / Python
+
+**`setup.ps1` fails building `webrtcvad-wheels`: "Microsoft Visual C++ 14.0 or greater is required"**
+- This means `python` resolved to a very new release (3.13/3.14+) that
+  doesn't have a prebuilt wheel yet for that package, so pip tried to
+  compile it from source. Install **Python 3.11 (64-bit)** from
+  <https://www.python.org/downloads/release/python-3119/> alongside your
+  existing Python (no need to uninstall anything) — the Windows installer
+  registers it with the `py` launcher automatically. Then delete the
+  broken environment and re-run setup, which now prefers 3.11 via
+  `py -3.11` automatically:
+  ```powershell
+  Remove-Item -Recurse -Force .venv
+  powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+  ```
+  The script prints "Using interpreter: py -3.11" when this worked.
+
+**`python` shows a Microsoft Store prompt instead of a version number**
+- Python isn't actually installed (or PATH hasn't refreshed). Install
+  from python.org with "Add python.exe to PATH" checked, then open a
+  **new** PowerShell window before trying again.
+
 ## Audio / listener
 
 **No clips appear when I talk**

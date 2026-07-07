@@ -46,8 +46,8 @@
     "inputs": {
       "image": ["8", 0],
       "upscale_method": "lanczos",
-      "width": 1920,
-      "height": 1080,
+      "width": 3840,
+      "height": 2160,
       "crop": "disabled"
     }
   },

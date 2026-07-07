@@ -7,7 +7,7 @@ Set-Location $root
 
 Write-Host "Creating virtual environment in .venv ..." -ForegroundColor Cyan
 python -m venv .venv
-if ($LASTEXITCODE -ne 0) { Write-Error "python not found — install Python 3.11 x64 first"; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Error "python not found - install Python 3.11 x64 first"; exit 1 }
 
 Write-Host "Installing dependencies ..." -ForegroundColor Cyan
 & .\.venv\Scripts\python.exe -m pip install --upgrade pip

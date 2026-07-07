@@ -71,8 +71,8 @@ comfyui:
   # SD 1.5 sweet spot; the workflow lanczos-upscales to display resolution.
   gen_width: 896
   gen_height: 504
-  display_width: 1920
-  display_height: 1080
+  display_width: 3840   # native 4K — matches a 4K TV so it isn't upscaled twice
+  display_height: 2160
   steps: 20
   cfg: 6.5
   sampler: dpmpp_2m

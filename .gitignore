@@ -1,0 +1,13 @@
+# Runtime data (audio clips, images, logs, history) — never commit
+data/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# OS
+Thumbs.db
+.DS_Store

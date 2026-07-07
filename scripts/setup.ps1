@@ -5,9 +5,28 @@
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
+# Prefer Python 3.11 via the "py" launcher: several dependencies here
+# (webrtcvad-wheels in particular) only ship prebuilt wheels up through
+# 3.11/3.12, so a newer default "python" (e.g. 3.13/3.14) forces pip to
+# compile from source and fail without Visual C++ Build Tools installed.
+$pyArgs = $null
+if (Get-Command py -ErrorAction SilentlyContinue) {
+    & py -3.11 --version *> $null
+    if ($LASTEXITCODE -eq 0) { $pyArgs = @("py", "-3.11") }
+}
+if (-not $pyArgs -and (Get-Command python -ErrorAction SilentlyContinue)) {
+    $pyArgs = @("python")
+}
+if (-not $pyArgs) {
+    Write-Error "Python not found. Install Python 3.11 (64-bit) from https://www.python.org/downloads/release/python-3119/ and check 'Add python.exe to PATH', then reopen PowerShell."
+    exit 1
+}
+Write-Host "Using interpreter: $($pyArgs -join ' ')" -ForegroundColor Cyan
+
 Write-Host "Creating virtual environment in .venv ..." -ForegroundColor Cyan
-python -m venv .venv
-if ($LASTEXITCODE -ne 0) { Write-Error "python not found - install Python 3.11 x64 first"; exit 1 }
+if ($pyArgs.Length -eq 2) { & $pyArgs[0] $pyArgs[1] -m venv .venv }
+else { & $pyArgs[0] -m venv .venv }
+if ($LASTEXITCODE -ne 0) { Write-Error "venv creation failed - is Python 3.11 (64-bit) installed?"; exit 1 }
 
 Write-Host "Installing dependencies ..." -ForegroundColor Cyan
 & .\.venv\Scripts\python.exe -m pip install --upgrade pip

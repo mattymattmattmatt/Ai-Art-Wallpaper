@@ -417,9 +417,13 @@ def image(name: str):
 @app.route("/thumb/<path:name>")
 def thumb(name: str):
     t = ensure_thumb(cfg, name)
-    if t is None:
-        return jsonify({"error": "not found"}), 404
-    return send_from_directory(THUMBS_DIR, t.name, max_age=3600)
+    if t is not None:
+        return send_from_directory(THUMBS_DIR, t.name, max_age=3600)
+    # Fallback (e.g. Pillow not installed): serve the full image; the
+    # browser scales it down. Heavier, but the gallery still works.
+    if (IMAGES_DIR / name).exists():
+        return send_from_directory(IMAGES_DIR, name, max_age=3600)
+    return jsonify({"error": "not found"}), 404
 
 
 @app.route("/api/favorite", methods=["POST"])

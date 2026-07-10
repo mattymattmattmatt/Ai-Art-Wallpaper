@@ -6,12 +6,14 @@ join, and cached thumbnails for the panel's gallery strip.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from artframe.config import Config
 from artframe.prompt_builder import load_history
 
 THUMB_WIDTH = 320
+_pil_warned = False
 
 
 # ------------------------------------------------------------- favorites
@@ -72,7 +74,9 @@ def gallery_entries(cfg: Config) -> list[dict]:
 
 def ensure_thumb(cfg: Config, name: str) -> Path | None:
     """Return a cached thumbnail for an artwork, creating it on demand.
-    Regenerated if the source image is newer than the cached thumb."""
+    Regenerated if the source image is newer than the cached thumb.
+    Returns None (caller falls back to the full image) if the source is
+    missing or Pillow isn't installed — never raises."""
     src = cfg.path("paths", "images_dir") / name
     if not src.exists() or src.suffix.lower() != ".png":
         return None
@@ -80,14 +84,26 @@ def ensure_thumb(cfg: Config, name: str) -> Path | None:
     if thumb.exists() and thumb.stat().st_mtime >= src.stat().st_mtime:
         return thumb
 
-    from PIL import Image  # local import: only the display server needs PIL
+    try:
+        from PIL import Image  # local import: only the display server needs PIL
+    except ImportError:
+        global _pil_warned
+        if not _pil_warned:
+            _pil_warned = True
+            logging.getLogger("display").warning(
+                "Pillow not installed - serving full images as thumbnails. "
+                "Run: .venv\\Scripts\\pip install -r requirements.txt")
+        return None
 
-    with Image.open(src) as im:
-        im = im.convert("RGB")
-        height = max(1, round(im.height * THUMB_WIDTH / im.width))
-        im.thumbnail((THUMB_WIDTH, height))
-        im.save(thumb, "JPEG", quality=80)
-    return thumb
+    try:
+        with Image.open(src) as im:
+            im = im.convert("RGB")
+            height = max(1, round(im.height * THUMB_WIDTH / im.width))
+            im.thumbnail((THUMB_WIDTH, height))
+            im.save(thumb, "JPEG", quality=80)
+        return thumb
+    except Exception:  # noqa: BLE001 - a bad thumb must not break the gallery
+        return None
 
 
 def prune_thumbs(cfg: Config) -> None:

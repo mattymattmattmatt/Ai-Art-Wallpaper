@@ -64,17 +64,21 @@ scripts\start_orchestrator.bat
 ```
 
 This is the long-running loop: first artwork ~2 minutes after start, then
-one every `schedule.interval_hours` (default 3). It also checks every
-30 s for the **manual trigger**:
+**continuous painting** — each new cycle begins `schedule.gap_minutes`
+(default 5) after the previous painting finished, so the frame is almost
+always working on its next piece. It also checks every 30 s for the
+**manual trigger**:
 
 - run `scripts\trigger_now.bat`, or
-- tap the bottom-right corner of the TV display, or
+- use the "Paint a new one now" button in the TV's control panel, or
 - create the file `data\trigger.flag` by any means you like.
 
-> Why a loop instead of a Task Scheduler time trigger? The loop reacts to
-> the trigger flag within seconds and keeps one simple process to manage.
-> If you'd rather use Task Scheduler's repetition, schedule
-> `orchestrator --once` every 3 h instead — both are supported.
+While idle between paintings the panel shows "Next painting at HH:MM".
+
+> Note on 24/7 load: continuous mode keeps the N150 near full CPU most of
+> the day (~20-30 min painting, 5 min rest). That's within spec for the
+> box, but expect fan noise and ~15-25 W of constant draw. Raise
+> `gap_minutes` if you'd rather it breathe more between pieces.
 
 ## 3. Logs
 
@@ -88,7 +92,7 @@ you wonder "why did it paint *that*?"
 
 | Knob | Effect |
 |---|---|
-| `schedule.interval_hours` | how often a new painting appears |
+| `schedule.gap_minutes` | breather between one painting finishing and the next starting |
 | `prompting.min_words` / `min_content_words` | how chatty the room must be to drive the art |
 | `prompting.remix_probability` | fallback flavor: history remix vs fresh random |
 | `prompting.similarity_threshold` | repeat guard: re-roll scenes whose content-word overlap with the last `similarity_window` prompts exceeds this (1 = off) |

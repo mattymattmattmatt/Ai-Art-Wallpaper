@@ -17,7 +17,8 @@ from artframe.config import Config
 
 
 def set_status(cfg: Config, stage: str, message: str = "",
-               prompt: str | None = None, source: str | None = None) -> None:
+               prompt: str | None = None, source: str | None = None,
+               expected_seconds: float | None = None) -> None:
     path = cfg.path("paths", "status_file")
     data = read_status(cfg)
     now = time.time()
@@ -27,6 +28,11 @@ def set_status(cfg: Config, stage: str, message: str = "",
         data["generating_since"] = now
     if stage != "generating":
         data.pop("generating_since", None)
+        data.pop("expected_seconds", None)
+    elif expected_seconds is not None:
+        # rolling estimate of how long this painting should take,
+        # so the display can draw a progress bar
+        data["expected_seconds"] = expected_seconds
 
     data.update({
         "stage": stage,

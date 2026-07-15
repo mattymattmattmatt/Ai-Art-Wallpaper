@@ -85,7 +85,14 @@ PAGE = """<!doctype html>
   #p-state { display:flex; align-items:center; font-size:19px; margin-bottom:2px; }
   #p-dot { width:11px; height:11px; border-radius:50%; background:#666;
            margin-right:10px; flex:0 0 auto; box-shadow:0 0 10px currentColor; }
-  #p-elapsed { color:#9a9a9a; font-size:14px; min-height:18px; margin-bottom:12px; }
+  #p-elapsed { color:#9a9a9a; font-size:14px; min-height:18px; }
+  #p-bar { height:6px; border-radius:3px; background:#2a2a32;
+           margin:8px 0 4px; overflow:hidden; display:none; }
+  #p-fill { height:100%; width:0%; border-radius:3px; background:#e0955a;
+            transition:width 1.2s ease; }
+  #p-remaining { color:#9a9a9a; font-size:13px; min-height:16px;
+                 margin-bottom:10px; }
+  #p-meta { color:#8a8a8a; font-size:13px; margin-bottom:12px; }
   .p-label { text-transform:uppercase; letter-spacing:.12em; font-size:12px;
              color:#8a8a8a; margin-bottom:6px; display:flex;
              justify-content:space-between; align-items:center; }
@@ -125,9 +132,12 @@ PAGE = """<!doctype html>
   <div id="panel">
     <div id="p-state"><span id="p-dot"></span><span id="p-stage">Loading...</span></div>
     <div id="p-elapsed"></div>
+    <div id="p-bar"><div id="p-fill"></div></div>
+    <div id="p-remaining"></div>
     <div class="p-label"><span id="p-label-text">On screen</span>
       <span id="p-star" title="Pin this artwork">&#9734;</span></div>
     <div id="p-prompt">-</div>
+    <div id="p-meta"></div>
     <div class="p-label">System</div>
     <div id="p-health"></div>
     <div class="p-label">Gallery</div>
@@ -274,6 +284,13 @@ PAGE = """<!doctype html>
     const m = Math.floor(s / 60), sec = s % 60;
     return m + 'm ' + String(sec).padStart(2, '0') + 's elapsed';
   }
+  function fmtDur(s) {          // "26m" / "4m 30s" / "45s"
+    if (s == null) return null;
+    const m = Math.floor(s / 60), sec = Math.round(s % 60);
+    if (m >= 10) return m + 'm';
+    if (m >= 1)  return sec ? (m + 'm ' + sec + 's') : (m + 'm');
+    return sec + 's';
+  }
 
   function updatePanelArt() {
     if (!panelOpen && !displayed) return;
@@ -284,6 +301,18 @@ PAGE = """<!doctype html>
     const prompt = painting ? s.prompt
                  : (displayed && displayed.prompt) || s.prompt;
     document.getElementById('p-prompt').textContent = prompt || '(none yet)';
+
+    let meta = [];
+    if (!painting && displayed) {
+      const d = fmtDur(displayed.duration_seconds);
+      if (d) meta.push('painted in ' + d);
+      if (displayed.source) meta.push('from ' + displayed.source);
+      if (displayed.ts) meta.push(displayed.ts);
+    }
+    if (typeof s.gallery_count === 'number')
+      meta.push(s.gallery_count + ' in gallery');
+    document.getElementById('p-meta').textContent = meta.join('  \\u00b7  ');
+
     const star = document.getElementById('p-star');
     const fav = displayed && displayed.favorite;
     star.textContent = fav ? '\\u2605' : '\\u2606';
@@ -313,7 +342,13 @@ PAGE = """<!doctype html>
     for (const e of gallery.slice(0, 30)) {
       const im = document.createElement('img');
       im.src = '/thumb/' + encodeURIComponent(e.file);
-      im.title = e.prompt || e.file;
+      const bits = [];
+      const d = fmtDur(e.duration_seconds);
+      if (d) bits.push('took ' + d);
+      if (e.ts) bits.push(e.ts);
+      if (e.favorite) bits.push('\\u2605 pinned');
+      im.title = (bits.length ? bits.join(' \\u00b7 ') + '\\n' : '')
+                 + (e.prompt || e.file);
       if (displayed && e.key === displayed.key) im.classList.add('current');
       if (e.favorite) im.classList.add('fav');
       im.addEventListener('click', () => {
@@ -336,10 +371,24 @@ PAGE = """<!doctype html>
       document.getElementById('p-dot').style.background = meta.c;
       document.getElementById('p-stage').textContent = s.message || meta.t;
 
-      let el = '';
-      if (s.stage === 'generating' && typeof s.elapsed_seconds === 'number')
-        el = fmtElapsed(s.elapsed_seconds) + '  (a full painting takes ~15-30 min)';
-      document.getElementById('p-elapsed').textContent = el;
+      const bar = document.getElementById('p-bar');
+      const painting = s.stage === 'generating' &&
+                       typeof s.elapsed_seconds === 'number';
+      document.getElementById('p-elapsed').textContent =
+        painting ? fmtElapsed(s.elapsed_seconds) : '';
+      if (painting && s.expected_seconds) {
+        bar.style.display = 'block';
+        const pct = Math.min(97, 100 * s.elapsed_seconds / s.expected_seconds);
+        document.getElementById('p-fill').style.width = pct.toFixed(1) + '%';
+        const left = s.expected_seconds - s.elapsed_seconds;
+        document.getElementById('p-remaining').textContent = left > 30
+          ? 'about ' + fmtDur(left) + ' left (based on recent paintings)'
+          : 'finishing up\\u2026';
+      } else {
+        bar.style.display = 'none';
+        document.getElementById('p-fill').style.width = '0%';
+        document.getElementById('p-remaining').textContent = '';
+      }
 
       renderHealth(s.health);
       updatePanelArt();
@@ -494,6 +543,7 @@ def api_status():
     }
     if st.get("stage") == "generating" and st.get("generating_since"):
         resp["elapsed_seconds"] = int(time.time() - st["generating_since"])
+        resp["expected_seconds"] = st.get("expected_seconds")
     return jsonify(resp)
 
 

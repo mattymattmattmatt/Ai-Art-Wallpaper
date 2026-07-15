@@ -10,8 +10,8 @@ offline on a GMKtec G3 Plus (Intel N150, 16 GB RAM, no dGPU, Windows 11).
  │  USB mic +   │ ─────────────────────────► │ rolling audio │
  │  WebRTC VAD  │   (silence never stored)   │    buffer     │
  └──────────────┘                            └───────┬───────┘
-        24/7 listener                                │ every 3 h
-                                                     ▼
+        24/7 listener                                │ continuously
+                                                     ▼  (5 min between paintings)
                         ┌────────────────────────────────────────┐
                         │  ORCHESTRATOR (one cycle)              │
                         │  1. faster-whisper transcribes window  │
@@ -51,7 +51,7 @@ scripts\setup.ps1              :: one-time venv + pip install
 scripts\start_comfyui.bat      :: ComfyUI server (edit its path first)
 scripts\start_listener.bat     :: 24/7 room listener
 scripts\start_display.bat      :: TV web server (port 8800)
-scripts\start_orchestrator.bat :: the every-3-hours painting loop
+scripts\start_orchestrator.bat :: the continuous painting loop
 scripts\run_cycle_now.bat      :: run ONE full cycle in a console (testing)
 scripts\trigger_now.bat        :: ask the running loop to paint now
 scripts\register_tasks.ps1     :: autostart all of it at logon (run once, admin)

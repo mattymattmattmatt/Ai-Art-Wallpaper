@@ -17,8 +17,10 @@ paths:
   heartbeats_dir: data/heartbeats        # component liveness for the health row
 
 schedule:
-  interval_hours: 3        # generate a new image every N hours
-  window_hours: 3          # transcribe audio from the last N hours
+  gap_minutes: 5           # pause between one painting FINISHING and the next STARTING
+  window_hours: 3          # transcribe audio from at most the last N hours
+                           # (clips are deleted after transcription, so each cycle
+                           # only sees what accumulated since the previous one)
   trigger_poll_seconds: 30 # how often loop mode checks the trigger flag
 
 audio:
@@ -105,10 +107,11 @@ display:
   port: 8800
   refresh_seconds: 20      # how often the kiosk page checks for a new image
   fit: contain             # contain = letterbox, cover = fill/crop
-  gallery_keep: 60         # keep this many past images on disk (favorites never count)
-  # Slideshow: rotate through past artworks between generations instead of
-  # holding the newest for 3 hours. A brand-new painting always interrupts
-  # the rotation and shows immediately.
+  gallery_keep: 120        # keep this many past images on disk (favorites never
+                           # count) — at ~30 paintings/day that's ~4 days of art
+  # Slideshow: rotate through past artworks while the next one is being
+  # painted. A brand-new painting always interrupts the rotation and
+  # shows immediately.
   slideshow_enable: true
   slideshow_minutes: 12    # how long each artwork stays up
   slideshow_favorites_boost: 2   # favorites appear this many times per shuffle

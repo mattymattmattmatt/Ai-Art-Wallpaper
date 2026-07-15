@@ -102,10 +102,12 @@ def load_history(cfg: Config) -> list[dict]:
 
 
 def append_history(cfg: Config, prompt: str, source: str,
-                   scene: str | None = None, image: str | None = None) -> None:
+                   scene: str | None = None, image: str | None = None,
+                   duration_seconds: int | None = None) -> None:
     """Record a successful prompt. `scene` is the prompt without the style
     suffix (used by the repeat guard); `image` links it to the artwork file
-    (used by the gallery)."""
+    (used by the gallery); `duration_seconds` is how long the painting took
+    (feeds the progress-bar estimate and thumbnail tooltips)."""
     history = load_history(cfg)
     entry = {"ts": time.strftime("%Y-%m-%d %H:%M:%S"),
              "source": source, "prompt": prompt}
@@ -113,6 +115,8 @@ def append_history(cfg: Config, prompt: str, source: str,
         entry["scene"] = scene
     if image:
         entry["image"] = image
+    if duration_seconds is not None:
+        entry["duration_seconds"] = duration_seconds
     history.append(entry)
     history = history[-cfg["prompting"]["history_max_entries"]:]
     cfg.path("paths", "history_file").write_text(

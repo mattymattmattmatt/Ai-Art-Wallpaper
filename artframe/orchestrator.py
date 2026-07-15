@@ -21,15 +21,26 @@ import os
 import sys
 import time
 
+from statistics import median
+
 from artframe.config import Config, load_config
 from artframe.gallery import load_favorites, prune_thumbs
 from artframe.generator import GenerationError, check_server, generate
 from artframe.log_setup import get_logger
-from artframe.prompt_builder import append_history, build_prompt
+from artframe.prompt_builder import append_history, build_prompt, load_history
 from artframe.status import beat, set_status
 from artframe.transcriber import transcribe_window
 
 LOCK_NAME = "cycle.lock"
+DEFAULT_EXPECTED_SECONDS = 25 * 60  # until real durations exist in history
+
+
+def expected_duration(cfg: Config) -> int:
+    """Rolling estimate of painting time: the median of the last few real
+    durations. Drives the display's progress bar."""
+    durations = [e["duration_seconds"] for e in load_history(cfg)
+                 if e.get("duration_seconds")][-7:]
+    return int(median(durations)) if durations else DEFAULT_EXPECTED_SECONDS
 
 
 class CycleLock:
@@ -92,7 +103,9 @@ def run_cycle(cfg: Config, force_fallback: bool = False) -> bool:
         out = cfg.path("paths", "images_dir") / time.strftime(
             "art_%Y%m%d_%H%M%S.png")
         set_status(cfg, "generating", "Painting the new artwork...",
-                   prompt=positive, source=source)
+                   prompt=positive, source=source,
+                   expected_seconds=expected_duration(cfg))
+        started = time.monotonic()
         try:
             generate(cfg, positive, negative, out)
         except GenerationError as exc:
@@ -100,10 +113,13 @@ def run_cycle(cfg: Config, force_fallback: bool = False) -> bool:
             set_status(cfg, "error", f"Generation failed: {exc}",
                        prompt=positive, source=source)
             return False
+        duration = int(time.monotonic() - started)
 
         # Only successful generations enter history — that keeps the
-        # remix fallback pool high quality. The image link feeds the gallery.
-        append_history(cfg, positive, source, scene=scene, image=out.name)
+        # remix fallback pool high quality. The image link feeds the gallery,
+        # the duration feeds the progress-bar estimate.
+        append_history(cfg, positive, source, scene=scene, image=out.name,
+                       duration_seconds=duration)
         prune_gallery(cfg, log)
         log.info("=== cycle complete: %s (source=%s) ===", out.name, source)
         set_status(cfg, "idle", "Waiting for the next painting",
@@ -118,14 +134,16 @@ def run_cycle(cfg: Config, force_fallback: bool = False) -> bool:
 
 
 def run_loop(cfg: Config) -> None:
-    """Run forever: a cycle every interval_hours, plus manual triggers."""
+    """Run forever: continuous painting with a short breather between
+    cycles (gap_minutes counts from one painting FINISHING to the next
+    STARTING), plus instant manual triggers."""
     log = get_logger("orchestrator", cfg)
-    interval = cfg["schedule"]["interval_hours"] * 3600
+    gap = cfg["schedule"]["gap_minutes"] * 60
     poll = cfg["schedule"]["trigger_poll_seconds"]
     flag = cfg.path("paths", "trigger_flag")
 
-    log.info("loop mode: every %sh, trigger flag %s",
-             cfg["schedule"]["interval_hours"], flag)
+    log.info("loop mode: %s min between paintings, trigger flag %s",
+             cfg["schedule"]["gap_minutes"], flag)
     set_status(cfg, "idle", "Warming up — first painting shortly")
     next_run = time.time() + 120  # first artwork ~2 min after boot
     while True:
@@ -135,8 +153,11 @@ def run_loop(cfg: Config) -> None:
             if triggered:
                 flag.unlink(missing_ok=True)
                 log.info("manual trigger detected")
-            run_cycle(cfg)
-            next_run = time.time() + interval
+            ok = run_cycle(cfg)
+            next_run = time.time() + gap
+            if ok:  # on failure keep the error status visible instead
+                set_status(cfg, "idle", "Next painting at "
+                           + time.strftime("%H:%M", time.localtime(next_run)))
         time.sleep(poll)
 
 

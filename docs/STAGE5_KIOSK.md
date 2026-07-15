@@ -16,23 +16,27 @@ crossfades to it within `display.refresh_seconds` (20 s).
 **The control panel.** Move the mouse into the **top-right corner** of the
 screen and a panel slides out showing:
 - the live pipeline stage (Idle / Listening back / Composing / Painting),
-  with elapsed time while an image is being painted;
+  with an elapsed timer **and a progress bar** while painting — the bar's
+  estimate is the median of your last few real painting times, so it gets
+  more accurate as the frame works; while idle it shows when the next
+  painting starts;
 - the prompt for whatever is on screen (or being painted right now), with
   a **star** to pin it as a favorite — favorites are never pruned and get
   extra turns in the slideshow;
 - a **System** health row — Mic (listener), Cycles (orchestrator),
   Painter (ComfyUI), Prompter (Ollama) — green means alive, red means
   that component is down or stale (see TROUBLESHOOTING);
-- a **Gallery** strip of recent artworks — click one to view it (the
-  frame returns to live art after 10 minutes, or tap the "back to live"
-  pill bottom-left);
+- a **Gallery** strip of recent artworks — hover a thumbnail to see how
+  long it took to paint and its prompt; click one to view it (the frame
+  returns to live art after 10 minutes, or tap the "back to live" pill
+  bottom-left);
 - a **"Paint a new one now"** button — the manual override, same as
   `trigger_now.bat` or `data\trigger.flag`.
 
 **Slideshow.** With `display.slideshow_enable: true` (default) the frame
-rotates through the gallery every `slideshow_minutes` (12) instead of
-holding one painting for 3 hours. A freshly painted artwork always
-interrupts the rotation and takes the screen. Favorites appear
+rotates through the gallery every `slideshow_minutes` (12) while the next
+piece is being painted. A freshly painted artwork always interrupts the
+rotation and takes the screen. Favorites appear
 `slideshow_favorites_boost` (2) times per shuffle.
 
 When the mouse is idle the screen is **pure artwork** — no cursor, no

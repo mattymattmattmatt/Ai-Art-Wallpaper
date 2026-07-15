@@ -65,6 +65,7 @@ def gallery_entries(cfg: Config) -> list[dict]:
             "scene": hist.get("scene"),
             "source": hist.get("source"),
             "ts": hist.get("ts"),
+            "duration_seconds": hist.get("duration_seconds"),
             "favorite": p.name in favorites,
         })
     return entries
